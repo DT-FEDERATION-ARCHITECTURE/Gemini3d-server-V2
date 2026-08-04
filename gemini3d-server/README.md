@@ -1,4 +1,4 @@
-# Gemini3D Server — Mission 2 (SLI edition)
+# Gemini3D Server — Version 2 (SLI edition)
 
 Server updated to consume `g3dl-monitoring v2` — the SLI rebuild.
 Same WebSocket contract as before for the IHM, same REST surface for
@@ -127,84 +127,5 @@ Sent at every trace tick on `/ws/inclusion/{sessionId}`:
 }
 ```
 
-This matches the IHM contract from the mission-3 work — the IHM keeps
-working without changes.
 
-## Files
 
-```
-src/main/java/gemini3d/server/
-├── Gemini3dServerApplication.java
-├── config/                            unchanged
-├── controller/
-│   ├── AutomatonController.java       updated: no Mealy properties field
-│   ├── EmulatorController.java        unchanged
-│   ├── HealthController.java          unchanged
-│   ├── InclusionController.java       unchanged
-│   ├── PropertiesController.java      NEW — G3DL CRUD
-│   ├── SpecController.java            updated: global automaton only
-│   └── TraceController.java           unchanged
-├── model/
-│   ├── InclusionSession.java          unchanged
-│   └── InclusionStepMessage.java      updated: VerdictDto + tSeconds + globalPropertyStatus
-├── monitoring/                        NEW package
-│   ├── MonitoringSessionService.java  owns FederatedMonitorSLI + FederatedConfig per session
-│   └── TickBridge.java                StepResult → MonitorInput, parses time_delta
-├── service/
-│   ├── AutomatonService.java          updated: dropped Mealy extraction
-│   ├── InclusionService.java          updated: drives federation.stepTick()
-│   └── TraceService.java              unchanged
-└── websocket/
-    └── InclusionWebSocketHandler.java unchanged
-```
-
-Deleted: `model/MealyProperty.java`, `service/PropertyExtractor.java`.
-
-## Verified
-
-- Compiles clean with `javac --release 21` against the three real
-  library jars (automaton-semantics, gemini3d-trace, g3dl-monitoring v2).
-- 19 Java source files, zero errors, zero warnings.
-- `g3dl-monitoring v2` itself was verified with 38/38 in-sandbox tests
-  passing and the egm.csv replay reproducing the v1 numbers exactly
-  (3,227 ALLOW, 0 UNKNOWN, **4,471 FAIL** on `Pression < 30 in PRINTING`
-  across 7,698 ticks).
-
-## Trying it
-
-```bash
-# 1) Health
-curl http://localhost:8080/api/health
-
-# 2) Load an automaton
-curl -X POST http://localhost:8080/api/load \
-     -H "Content-Type: application/json" \
-     -d @your-automaton.json
-
-# 3) Start inclusion (creates the federated SLI for this session)
-curl -X POST http://localhost:8080/api/inclusion/start \
-     -H "Content-Type: application/json" \
-     -d '{"traceFile":"egm.csv"}'
-# → { "sessionId":"abc12345", ... }
-
-# 4) Register a G3DL property
-curl -X POST http://localhost:8080/api/sessions/abc12345/properties \
-     -H "Content-Type: application/json" \
-     -d '{"source":"property pressure_safe: in PRINTING: Pression < 30"}'
-
-# 5) List
-curl http://localhost:8080/api/sessions/abc12345/properties
-
-# 6) Snapshot — internal state of every monitor
-curl http://localhost:8080/api/sessions/abc12345/properties/snapshot
-
-# 7) Subscribe at ws://localhost:8080/ws/inclusion/abc12345
-#    Every tick now carries propertyVerdicts + globalPropertyStatus.
-```
-
-## Heads-up
-
-If you start an inclusion and register no properties, `propertyVerdicts`
-is empty and `globalPropertyStatus` is `null` (no monitors active —
-nothing to aggregate). That's intentional. The IHM's `MonitorsPage`
-shows a "no properties registered" empty state in that case.
