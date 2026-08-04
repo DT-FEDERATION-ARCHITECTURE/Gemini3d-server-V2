@@ -1,0 +1,38 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.4.1'
+    id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'gemini3d'
+version = '1.0-SNAPSHOT'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+configurations.all {
+    exclude group: 'org.slf4j', module: 'slf4j-simple'
+}
+
+dependencies {
+    // Spring Boot
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'
+
+    // OpenAPI / Swagger
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
+
+    // Existing libraries (install via `gradle publishToMavenLocal` in each)
+    implementation 'org.digitaltwin:automaton-semantics:1.0.0-SNAPSHOT'
+    implementation 'gemini3d:gemini3d-trace:1.0-SNAPSHOT'
+
+    // NEW — G3DL property monitoring via SLI (mission 2 + SLI rebuild)
+    implementation 'gemini3d:g3dl-monitoring:2.0.0'
+}
